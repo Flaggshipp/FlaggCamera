@@ -1,7 +1,5 @@
 <h1 align="center"> FlaggCamera </h1></b>
 </p>
-
-<br></br>
 <br></br>
 
 ## Updates and More:
