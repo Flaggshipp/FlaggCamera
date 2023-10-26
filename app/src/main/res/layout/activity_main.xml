@@ -12,10 +12,10 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <SurfaceView
+        <orgg.flaggshipp.camera.ResizableSurfaceView
             android:id="@+id/camera_preview"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

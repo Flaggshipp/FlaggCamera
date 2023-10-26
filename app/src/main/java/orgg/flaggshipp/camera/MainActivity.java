@@ -1,9 +1,12 @@
 package orgg.flaggshipp.camera;
 
+import static android.app.usage.UsageEvents.Event.NONE;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
@@ -17,9 +20,13 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewParent;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
+
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -39,16 +46,32 @@ import java.util.Locale;
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private Camera camera;
     private SurfaceView surfaceView;
+
+    private SurfaceView surfaceView1;
     private SurfaceHolder surfaceHolder;
     private boolean isPreviewing = false;
-
     private boolean useBackCamera = true;
+
+    private ScaleGestureDetector scaleGestureDetector;
+
+    private static final int NONE = 0;
+
+    private static final int ZOOM = 1;
+    private float currentZoom = 0;
+
+    private float previousSpan = 0;
+
+    private int mode = NONE;
+
+    private float oldDist = 1f;
 
     @SuppressLint("MissingInflatedId")
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        adjustSurfaceViewSize();
 
         surfaceView = (SurfaceView) findViewById(R.id.camera_preview);
         surfaceHolder = surfaceView.getHolder();
@@ -118,6 +141,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             camera = null;
         }
     }
+
     private Camera.Size getBestPreviewSize(Camera.Parameters parameters, double targetRatio) {
         Camera.Size bestSize = null;
         double minDiff = Double.MAX_VALUE;
@@ -218,6 +242,31 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
     }
 
+    private void zoomCamera(int zoomValue) {
+        if (camera != null) {
+            Camera.Parameters parameters = camera.getParameters();
+
+            if (parameters.isZoomSupported()) {
+                int maxZoom = parameters.getMaxZoom();
+                if (zoomValue >= 0 && zoomValue <= maxZoom) {
+                    parameters.setZoom(zoomValue);
+                    camera.setParameters(parameters);
+                } else {
+                    if (zoomValue < 0) {
+                        parameters.setZoom(0);
+                        camera.setParameters(parameters);
+                    } else if (zoomValue > maxZoom) {
+                        parameters.setZoom(maxZoom);
+                        camera.setParameters(parameters);
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Zoom wird nicht unterstützt", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+
     private void switchCamera() {
         if (camera != null) {
             releaseCamera(); // Freigeben der aktuellen Kamera
@@ -308,4 +357,48 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         );
     }
 
+    private void adjustSurfaceViewSize() {
+
+        surfaceView1 = (SurfaceView) findViewById(R.id.camera_preview);
+        surfaceHolder = surfaceView1.getHolder();
+        surfaceHolder.addCallback(this);
+
+        int availableWidthInDp = calculateAvailableWidthInDp();
+
+        int desiredHeightInDp = (int) ((4.0 / 3.0) * availableWidthInDp);
+
+        int desiredHeightInPixels = dpToPx(desiredHeightInDp);
+
+        surfaceView1.getLayoutParams().height = desiredHeightInPixels;
+        surfaceView1.requestLayout();
+    }
+
+    private int calculateAvailableWidthInDp() {
+        surfaceView1 = (SurfaceView) findViewById(R.id.camera_preview);
+        surfaceHolder = surfaceView1.getHolder();
+        surfaceHolder.addCallback(this);
+        ViewParent parent = surfaceView1.getParent();
+
+        if (parent instanceof View) {
+            View parentView = (View) parent;
+
+            int parentWidthInPixels = parentView.getWidth();
+
+            int parentWidthInDp = pxToDp(parentWidthInPixels);
+
+            return parentWidthInDp;
+        } else {
+            return 0;
+        }
+    }
+
+    private int dpToPx(int dp) {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.round(dp * density);
+    }
+
+    private int pxToDp(int px) {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.round(px / density);
+    }
 }
