@@ -16,6 +16,7 @@ import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -71,11 +72,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        adjustSurfaceViewSize();
-
         surfaceView = (SurfaceView) findViewById(R.id.camera_preview);
         surfaceHolder = surfaceView.getHolder();
         surfaceHolder.addCallback(this);
+
+        autoFocus();
 
         ImageView captureBtn = findViewById(R.id.capture_button);
         captureBtn.setOnClickListener(new View.OnClickListener() {
@@ -106,13 +107,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     public void surfaceCreated(SurfaceHolder holder) {
         try {
             camera = Camera.open();
-
-            Camera.Parameters parameters = camera.getParameters();
-            Camera.Size bestSize = getBestPreviewSize(parameters, 16.0 / 9.0);
-            if (bestSize != null) {
-                parameters.setPreviewSize(bestSize.width, bestSize.height);
-                camera.setParameters(parameters);
-            }
 
             camera.setDisplayOrientation(90);
 
@@ -242,31 +236,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
     }
 
-    private void zoomCamera(int zoomValue) {
-        if (camera != null) {
-            Camera.Parameters parameters = camera.getParameters();
-
-            if (parameters.isZoomSupported()) {
-                int maxZoom = parameters.getMaxZoom();
-                if (zoomValue >= 0 && zoomValue <= maxZoom) {
-                    parameters.setZoom(zoomValue);
-                    camera.setParameters(parameters);
-                } else {
-                    if (zoomValue < 0) {
-                        parameters.setZoom(0);
-                        camera.setParameters(parameters);
-                    } else if (zoomValue > maxZoom) {
-                        parameters.setZoom(maxZoom);
-                        camera.setParameters(parameters);
-                    }
-                }
-            } else {
-                Toast.makeText(this, "Zoom wird nicht unterstützt", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-
     private void switchCamera() {
         if (camera != null) {
             releaseCamera(); // Freigeben der aktuellen Kamera
@@ -355,50 +324,5 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     }
                 }
         );
-    }
-
-    private void adjustSurfaceViewSize() {
-
-        surfaceView1 = (SurfaceView) findViewById(R.id.camera_preview);
-        surfaceHolder = surfaceView1.getHolder();
-        surfaceHolder.addCallback(this);
-
-        int availableWidthInDp = calculateAvailableWidthInDp();
-
-        int desiredHeightInDp = (int) ((4.0 / 3.0) * availableWidthInDp);
-
-        int desiredHeightInPixels = dpToPx(desiredHeightInDp);
-
-        surfaceView1.getLayoutParams().height = desiredHeightInPixels;
-        surfaceView1.requestLayout();
-    }
-
-    private int calculateAvailableWidthInDp() {
-        surfaceView1 = (SurfaceView) findViewById(R.id.camera_preview);
-        surfaceHolder = surfaceView1.getHolder();
-        surfaceHolder.addCallback(this);
-        ViewParent parent = surfaceView1.getParent();
-
-        if (parent instanceof View) {
-            View parentView = (View) parent;
-
-            int parentWidthInPixels = parentView.getWidth();
-
-            int parentWidthInDp = pxToDp(parentWidthInPixels);
-
-            return parentWidthInDp;
-        } else {
-            return 0;
-        }
-    }
-
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return Math.round(dp * density);
-    }
-
-    private int pxToDp(int px) {
-        float density = getResources().getDisplayMetrics().density;
-        return Math.round(px / density);
     }
 }
