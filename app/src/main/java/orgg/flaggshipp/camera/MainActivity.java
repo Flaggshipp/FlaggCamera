@@ -6,7 +6,10 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
@@ -238,13 +241,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     private void switchCamera() {
         if (camera != null) {
-            releaseCamera(); // Freigeben der aktuellen Kamera
+            releaseCamera();
 
-            // Überprüfen, ob es eine andere Kamera gibt, die wir verwenden können
             int numberOfCameras = Camera.getNumberOfCameras();
             if (numberOfCameras > 1) {
-                useBackCamera = !useBackCamera; // Umschalten zwischen Vorder- und Hinterkamera
-                initCamera(); // Initialisieren Sie die ausgewählte Kamera
+                useBackCamera = !useBackCamera;
+                initCamera();
             } else {
                 Toast.makeText(this, "Nur eine Kamera verfügbar", Toast.LENGTH_SHORT).show();
             }
@@ -276,9 +278,26 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         File pictureFile = new File(mediaStorageDir.getPath() + File.separator + fileName);
 
         try {
-            FileOutputStream fos = new FileOutputStream(pictureFile);
+            File tempPictureFile = File.createTempFile("temp", ".jpg", getCacheDir());
+            FileOutputStream fos = new FileOutputStream(tempPictureFile);
             fos.write(data);
             fos.close();
+
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 1;
+            Bitmap tempBitmap = BitmapFactory.decodeFile(tempPictureFile.getAbsolutePath(), options);
+            Matrix matrix = new Matrix();
+            matrix.postRotate(90);
+            Bitmap rotatedBitmap = Bitmap.createBitmap(tempBitmap, 0, 0, tempBitmap.getWidth(), tempBitmap.getHeight(), matrix, true);
+
+            FileOutputStream rotatedFos = new FileOutputStream(pictureFile);
+            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, rotatedFos);
+            rotatedFos.close();
+
+            tempPictureFile.delete();
+
+            addToGallery(pictureFile);
+
             Log.d("FlaggCamera", "Bild gespeichert: " + pictureFile.getAbsolutePath());
         } catch (FileNotFoundException e) {
             Log.e("FlaggCamera", "Datei nicht gefunden: " + e.getMessage());
@@ -286,6 +305,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             Log.e("FlaggCamera", "Fehler beim Zugriff auf die Datei: " + e.getMessage());
         }
     }
+
 
     private void savePictureToGallery(Image image) throws IOException {
         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
