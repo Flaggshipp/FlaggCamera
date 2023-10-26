@@ -1,40 +1,29 @@
 package orgg.flaggshipp.camera;
 
-import static android.app.usage.UsageEvents.Event.NONE;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.Context;
-import android.content.pm.PackageManager;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.hardware.Camera;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraManager;
 import android.media.Image;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewParent;
-import android.widget.Button;
-import android.widget.ImageView;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
-import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 
-import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -75,13 +64,23 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
         surfaceView = (SurfaceView) findViewById(R.id.camera_preview);
         surfaceHolder = surfaceView.getHolder();
         surfaceHolder.addCallback(this);
 
         autoFocus();
 
-        ImageView captureBtn = findViewById(R.id.capture_button);
+        ImageButton galleryBtn = findViewById(R.id.gallery_button);
+        galleryBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openLastImage();
+            }
+        });
+
+        ImageButton captureBtn = findViewById(R.id.capture_button);
         captureBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -89,7 +88,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             }
         });
 
-        ImageView switchCamBtn = findViewById(R.id.switch_cam_button);
+        ImageButton switchCamBtn = findViewById(R.id.switch_cam_button);
         switchCamBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -137,6 +136,33 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             camera.release();
             camera = null;
         }
+    }
+
+    public void openLastImage() {
+        File imageFile = findLatestImageInDirectory("/sdcard/DCIM/FlaggCamera");
+        Uri contentUri = FileProvider.getUriForFile(this, getPackageName() + ".provider", imageFile);
+
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(contentUri, "image/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(intent);
+    }
+
+    private File findLatestImageInDirectory(String directoryPath) {
+        File directory = new File(directoryPath);
+        File[] files = directory.listFiles();
+
+        if (files != null && files.length > 0) {
+            File latestImage = files[0];
+            for (File file : files) {
+                if (file.lastModified() > latestImage.lastModified()) {
+                    latestImage = file;
+                }
+            }
+            return latestImage;
+        }
+
+        return null;
     }
 
     private Camera.Size getBestPreviewSize(Camera.Parameters parameters, double targetRatio) {
@@ -213,11 +239,23 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
 
         if (camera != null) {
-            camera.setDisplayOrientation(90);
             Camera.Parameters parameters = camera.getParameters();
+
+            if (useBackCamera) {
+                camera.setDisplayOrientation(90);
+            } else {
+                camera.setDisplayOrientation(90);
+            }
+
             Camera.Size bestSize = getBestPreviewSize(parameters, 16.0 / 9.0);
             if (bestSize != null) {
                 parameters.setPreviewSize(bestSize.width, bestSize.height);
+            }
+
+            if (useBackCamera) {
+                parameters.setRotation(0);
+            } else {
+                parameters.setRotation(180);
             }
 
             camera.setParameters(parameters);
@@ -248,7 +286,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 useBackCamera = !useBackCamera;
                 initCamera();
             } else {
-                Toast.makeText(this, "Nur eine Kamera verfügbar", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Only one camera available", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -269,7 +307,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "FlaggCamera");
 
         if (!mediaStorageDir.exists() && !mediaStorageDir.mkdirs()) {
-            Log.e("FlaggCamera", "Fehler beim Erstellen des Verzeichnisses");
+            Log.e("FlaggCamera", "Error when creating the directory");
             return;
         }
 
@@ -298,11 +336,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
             addToGallery(pictureFile);
 
-            Log.d("FlaggCamera", "Bild gespeichert: " + pictureFile.getAbsolutePath());
+            Log.d("FlaggCamera", "Image saved: " + pictureFile.getAbsolutePath());
         } catch (FileNotFoundException e) {
-            Log.e("FlaggCamera", "Datei nicht gefunden: " + e.getMessage());
+            Log.e("FlaggCamera", "File not found: " + e.getMessage());
         } catch (IOException e) {
-            Log.e("FlaggCamera", "Fehler beim Zugriff auf die Datei: " + e.getMessage());
+            Log.e("FlaggCamera", "Error accessing the file: " + e.getMessage());
         }
     }
 
