@@ -234,18 +234,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         if (useBackCamera) {
             camera = Camera.open(Camera.CameraInfo.CAMERA_FACING_BACK);
+            camera.setDisplayOrientation(90);
         } else {
             camera = Camera.open(Camera.CameraInfo.CAMERA_FACING_FRONT);
+            camera.setDisplayOrientation(90);
         }
 
         if (camera != null) {
             Camera.Parameters parameters = camera.getParameters();
-
-            if (useBackCamera) {
-                camera.setDisplayOrientation(90);
-            } else {
-                camera.setDisplayOrientation(90);
-            }
 
             Camera.Size bestSize = getBestPreviewSize(parameters, 16.0 / 9.0);
             if (bestSize != null) {
@@ -255,7 +251,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             if (useBackCamera) {
                 parameters.setRotation(0);
             } else {
-                parameters.setRotation(180);
+                parameters.setRotation(0);
             }
 
             camera.setParameters(parameters);
@@ -324,8 +320,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inSampleSize = 1;
             Bitmap tempBitmap = BitmapFactory.decodeFile(tempPictureFile.getAbsolutePath(), options);
+
             Matrix matrix = new Matrix();
-            matrix.postRotate(90);
+
+            if (useBackCamera) {
+                matrix.postRotate(90);
+            } else {
+                matrix.postRotate(270);
+            }
+
             Bitmap rotatedBitmap = Bitmap.createBitmap(tempBitmap, 0, 0, tempBitmap.getWidth(), tempBitmap.getHeight(), matrix, true);
 
             FileOutputStream rotatedFos = new FileOutputStream(pictureFile);
@@ -343,7 +346,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             Log.e("FlaggCamera", "Error accessing the file: " + e.getMessage());
         }
     }
-
 
     private void savePictureToGallery(Image image) throws IOException {
         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
