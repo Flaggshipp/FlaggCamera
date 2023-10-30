@@ -4,6 +4,9 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -12,6 +15,7 @@ import android.hardware.Camera;
 import android.media.Image;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.os.Build.VERSION;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -20,7 +24,6 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.Toast;
-
 import android.view.ScaleGestureDetector;
 
 import androidx.core.content.FileProvider;
@@ -57,6 +60,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private int mode = NONE;
 
     private float oldDist = 1f;
+
+    private static final int PERMISSIONS_REQUEST_CODE = 123;
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -96,6 +101,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             }
         });
 
+        ImageButton flashlightBtn = findViewById(R.id.flashlight);
+        flashlightBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toggleFlashlight();
+            }
+        });
+
         surfaceView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -103,6 +116,42 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             }
         });
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                    || checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_CODE);
+            }
+        }
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == PERMISSIONS_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                    && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+            } else {
+                Toast.makeText(this, "Permessions are needed to run the Application!", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private boolean isFlashlightOn = false;
+
+    private void toggleFlashlight() {
+        if (camera != null) {
+            Camera.Parameters parameters = camera.getParameters();
+
+            if (isFlashlightOn) {
+                parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                isFlashlightOn = false;
+            } else {
+                parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+                isFlashlightOn = true;
+            }
+
+            camera.setParameters(parameters);
+        }
     }
 
     @Override
